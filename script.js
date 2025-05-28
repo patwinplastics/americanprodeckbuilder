@@ -1,3 +1,5 @@
+/* global THREE */
+
 // Three.js Setup
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 350) / window.innerHeight, 0.1, 1000);
@@ -61,7 +63,7 @@ let materialList = { boards: 0, joists: 0, railings: 0 };
 
 // Wood Texture
 const textureLoader = new THREE.TextureLoader();
-const woodTexture = textureLoader.load('https://threejs.org/examples/textures/wood.jpg');
+const woodTexture = textureLoader.load('https://threejs.org/examples/textures/wood.jpg', () => updateLoading(0.3));
 woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
 woodTexture.repeat.set(0.1, 1);
 
@@ -69,15 +71,21 @@ woodTexture.repeat.set(0.1, 1);
 let loadProgress = 0;
 function updateLoading(progress) {
     loadProgress = Math.max(loadProgress, progress);
-    document.getElementById('unity-progress-bar-full').style.width = `${loadProgress * 100}%`;
+    const progressBar = document.getElementById('unity-progress-bar-full');
+    if (progressBar) {
+        progressBar.style.width = `${loadProgress * 100}%`;
+    }
     if (loadProgress >= 1) {
-        setTimeout(() => document.getElementById('loading-cover').style.display = 'none', 500);
+        const loadingCover = document.getElementById('loading-cover');
+        if (loadingCover) {
+            setTimeout(() => loadingCover.style.display = 'none', 500);
+        }
     }
 }
 updateLoading(0.1);
 
 // Deck Construction
-function buildDeck() {
+function buildDeckInternal() {
     while (deckGroup.children.length) {
         deckGroup.remove(deckGroup.children[0]);
     }
@@ -199,57 +207,62 @@ function buildDeck() {
     }
 
     let allBoards = [];
-    if (deck.shape === 'rectangular') {
-        addJoists(deck.width, deck.length);
-        allBoards = addBoards(deck.width, deck.length);
-        if (deck.pictureFrame) addPictureFrame(deck.width, deck.length);
-        if (deck.railings) addRailings(deck.width, deck.length);
-    } else if (deck.shape === 'l-shaped') {
-        addJoists(deck.width, deck.length);
-        addJoists(deck.wingWidth, deck.wingLength, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2);
-        allBoards = allBoards.concat(addBoards(deck.width, deck.length));
-        allBoards = allBoards.concat(addBoards(deck.wingWidth, deck.wingLength, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2));
-        if (deck.pictureFrame) {
-            addPictureFrame(deck.width, deck.length);
-            addPictureFrame(deck.wingWidth, deck.wingLength, deck.height, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2);
+    try {
+        if (deck.shape === 'rectangular') {
+            addJoists(deck.width, deck.length);
+            allBoards = addBoards(deck.width, deck.length);
+            if (deck.pictureFrame) addPictureFrame(deck.width, deck.length);
+            if (deck.railings) addRailings(deck.width, deck.length);
+        } else if (deck.shape === 'l-shaped') {
+            addJoists(deck.width, deck.length);
+            addJoists(deck.wingWidth, deck.wingLength, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2);
+            allBoards = allBoards.concat(addBoards(deck.width, deck.length));
+            allBoards = allBoards.concat(addBoards(deck.wingWidth, deck.wingLength, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2));
+            if (deck.pictureFrame) {
+                addPictureFrame(deck.width, deck.length);
+                addPictureFrame(deck.wingWidth, deck.wingLength, deck.height, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2);
+            }
+            if (deck.railings) {
+                addRailings(deck.width, deck.length);
+                addRailings(deck.wingWidth, deck.wingLength, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2);
+            }
+        } else if (deck.shape === 't-shaped') {
+            addJoists(deck.width, deck.length);
+            addJoists(deck.wingWidth, deck.wingLength, 0, deck.length / 2 + deck.wingLength / 2);
+            allBoards = allBoards.concat(addBoards(deck.width, deck.length));
+            allBoards = allBoards.concat(addBoards(deck.wingWidth, deck.wingLength, 0, deck.length / 2 + deck.wingLength / 2));
+            if (deck.pictureFrame) {
+                addPictureFrame(deck.width, deck.length);
+                addPictureFrame(deck.wingWidth, deck.wingLength, deck.height, 0, deck.length / 2 + deck.wingLength / 2);
+            }
+            if (deck.railings) {
+                addRailings(deck.width, deck.length);
+                addRailings(deck.wingWidth, deck.wingLength, 0, deck.length / 2 + deck.wingLength / 2);
+            }
+        } else if (deck.shape === 'multi-level') {
+            addJoists(deck.width, deck.length);
+            addJoists(deck.secondWidth, deck.secondLength, 0, deck.length / 2 + deck.secondLength / 2, deck.height + 1);
+            allBoards = allBoards.concat(addBoards(deck.width, deck.length));
+            allBoards = allBoards.concat(addBoards(deck.secondWidth, deck.secondLength, 0, deck.length / 2 + deck.secondLength / 2, deck.height + 1));
+            if (deck.pictureFrame) {
+                addPictureFrame(deck.width, deck.length);
+                addPictureFrame(deck.secondWidth, deck.secondLength, deck.height + 1, 0, deck.length / 2 + deck.secondLength / 2);
+            }
+            if (deck.railings) {
+                addRailings(deck.width, deck.length);
+                addRailings(deck.secondWidth, deck.secondLength, 0, deck.length / 2 + deck.secondLength / 2, deck.height + 1);
+            }
         }
-        if (deck.railings) {
-            addRailings(deck.width, deck.length);
-            addRailings(deck.wingWidth, deck.wingLength, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2);
-        }
-    } else if (deck.shape === 't-shaped') {
-        addJoists(deck.width, deck.length);
-        addJoists(deck.wingWidth, deck.wingLength, 0, deck.length / 2 + deck.wingLength / 2);
-        allBoards = allBoards.concat(addBoards(deck.width, deck.length));
-        allBoards = allBoards.concat(addBoards(deck.wingWidth, deck.wingLength, 0, deck.length / 2 + deck.wingLength / 2));
-        if (deck.pictureFrame) {
-            addPictureFrame(deck.width, deck.length);
-            addPictureFrame(deck.wingWidth, deck.wingLength, deck.height, 0, deck.length / 2 + deck.wingLength / 2);
-        }
-        if (deck.railings) {
-            addRailings(deck.width, deck.length);
-            addRailings(deck.wingWidth, deck.wingLength, 0, deck.length / 2 + deck.wingLength / 2);
-        }
-    } else if (deck.shape === 'multi-level') {
-        addJoists(deck.width, deck.length);
-        addJoists(deck.secondWidth, deck.secondLength, 0, deck.length / 2 + deck.secondLength / 2, deck.height + 1);
-        allBoards = allBoards.concat(addBoards(deck.width, deck.length));
-        allBoards = allBoards.concat(addBoards(deck.secondWidth, deck.secondLength, 0, deck.length / 2 + deck.secondLength / 2, deck.height + 1));
-        if (deck.pictureFrame) {
-            addPictureFrame(deck.width, deck.length);
-            addPictureFrame(deck.secondWidth, deck.secondLength, deck.height + 1, 0, deck.length / 2 + deck.secondLength / 2);
-        }
-        if (deck.railings) {
-            addRailings(deck.width, deck.length);
-            addRailings(deck.secondWidth, deck.secondLength, 0, deck.length / 2 + deck.secondLength / 2, deck.height + 1);
-        }
-    }
 
-    history = history.slice(0, historyIndex + 1);
-    history.push(JSON.stringify(deck));
-    historyIndex++;
-    updateSummary();
-    updateLoading(1);
+        history = history.slice(0, historyIndex + 1);
+        history.push(JSON.stringify(deck));
+        historyIndex++;
+        updateSummary();
+        updateLoading(1);
+    } catch (error) {
+        console.error('Error building deck:', error);
+        updateLoading(1); // Ensure loading screen hides even on error
+    }
 }
 
 // Cost Estimation and Summary
@@ -259,10 +272,18 @@ function updateSummary() {
     const railingCostPerPost = 50;
     const totalCost = materialList.boards * 12 * boardCostPerFoot + materialList.joists * joistCostPerUnit + materialList.railings * railingCostPerPost;
 
-    document.getElementById('material-list').innerText = `Materials: ${materialList.boards} boards, ${materialList.joists} joists, ${materialList.railings} railing posts`;
-    document.getElementById('cost-estimate').innerText = `Estimated Cost: $${totalCost.toFixed(2)}`;
+    const materialListEl = document.getElementById('material-list');
+    const costEstimateEl = document.getElementById('cost-estimate');
+    const designSummaryEl = document.getElementById('design-summary');
 
-    document.getElementById('design-summary').innerText = `
+    if (materialListEl) {
+        materialListEl.innerText = `Materials: ${materialList.boards} boards, ${materialList.joists} joists, ${materialList.railings} railing posts`;
+    }
+    if (costEstimateEl) {
+        costEstimateEl.innerText = `Estimated Cost: $${totalCost.toFixed(2)}`;
+    }
+    if (designSummaryEl) {
+        designSummaryEl.innerText = `
 Shape: ${deck.shape.charAt(0).toUpperCase() + deck.shape.slice(1)}
 Width: ${Math.floor(deck.width)} ft ${Math.round((deck.width % 1) * 12)} in
 Length: ${Math.floor(deck.length)} ft ${Math.round((deck.length % 1) * 12)} in
@@ -275,27 +296,32 @@ Board Pattern: ${deck.boardPattern}
 Picture Frame: ${deck.pictureFrame ? 'Yes' : 'No'}
 Railings: ${deck.railings ? 'Yes' : 'No'}
 Color: ${document.getElementById('boardColor').options[document.getElementById('boardColor').selectedIndex].text}
-    `;
+        `;
+    }
 }
 
 // UI Functions
 function openTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    document.querySelector(`button[onclick="openTab('${tabId}')"]`).classList.add('active');
+    const tab = document.getElementById(tabId);
+    const btn = document.querySelector(`button[onclick="openTab('${tabId}')"]`);
+    if (tab) tab.classList.add('active');
+    if (btn) btn.classList.add('active');
     updateShapeInputs();
 }
 
 function updateShapeInputs() {
     const shape = document.getElementById('deckShape').value;
-    document.getElementById('wing-inputs').style.display = shape === 'rectangular' ? 'none' : 'block';
-    document.getElementById('multi-level-inputs').style.display = shape === 'multi-level' ? 'block' : 'none';
+    const wingInputs = document.getElementById('wing-inputs');
+    const multiLevelInputs = document.getElementById('multi-level-inputs');
+    if (wingInputs) wingInputs.style.display = shape === 'rectangular' ? 'none' : 'block';
+    if (multiLevelInputs) multiLevelInputs.style.display = shape === 'multi-level' ? 'block' : 'none';
 }
 
 function updateMaterials() {
     deck.color = document.getElementById('boardColor').value;
-    buildDeck();
+    buildDeckInternal();
 }
 
 function updateLighting() {
@@ -324,7 +350,7 @@ function undo() {
         historyIndex--;
         deck = JSON.parse(history[historyIndex]);
         updateUI();
-        buildDeck();
+        buildDeckInternal();
     }
 }
 
@@ -333,43 +359,64 @@ function redo() {
         historyIndex++;
         deck = JSON.parse(history[historyIndex]);
         updateUI();
-        buildDeck();
+        buildDeckInternal();
     }
 }
 
 function updateUI() {
-    document.getElementById('deckShape').value = deck.shape;
-    document.getElementById('widthFeet').value = Math.floor(deck.width);
-    document.getElementById('widthInches').value = Math.round((deck.width % 1) * 12);
-    document.getElementById('lengthFeet').value = Math.floor(deck.length);
-    document.getElementById('lengthInches').value = Math.round((deck.length % 1) * 12);
-    document.getElementById('wingWidthFeet').value = Math.floor(deck.wingWidth);
-    document.getElementById('wingWidthInches').value = Math.round((deck.wingWidth % 1) * 12);
-    document.getElementById('wingLengthFeet').value = Math.floor(deck.wingLength);
-    document.getElementById('wingLengthInches').value = Math.round((deck.wingLength % 1) * 12);
-    document.getElementById('secondWidthFeet').value = Math.floor(deck.secondWidth);
-    document.getElementById('secondWidthInches').value = Math.round((deck.secondWidth % 1) * 12);
-    document.getElementById('secondLengthFeet').value = Math.floor(deck.secondLength);
-    document.getElementById('secondLengthInches').value = Math.round((deck.secondLength % 1) * 12);
-    document.getElementById('deckHeight').value = deck.height;
-    document.getElementById('boardLength').value = deck.boardLength;
-    document.getElementById('boardDirection').value = deck.boardDirection;
-    document.getElementById('boardPattern').value = deck.boardPattern;
-    document.getElementById('pictureFrame').checked = deck.pictureFrame;
-    document.getElementById('railings').checked = deck.railings;
-    document.getElementById('boardColor').value = deck.color;
+    const shapeEl = document.getElementById('deckShape');
+    const widthFeetEl = document.getElementById('widthFeet');
+    const widthInchesEl = document.getElementById('widthInches');
+    const lengthFeetEl = document.getElementById('lengthFeet');
+    const lengthInchesEl = document.getElementById('lengthInches');
+    const wingWidthFeetEl = document.getElementById('wingWidthFeet');
+    const wingWidthInchesEl = document.getElementById('wingWidthInches');
+    const wingLengthFeetEl = document.getElementById('wingLengthFeet');
+    const wingLengthInchesEl = document.getElementById('wingLengthInches');
+    const secondWidthFeetEl = document.getElementById('secondWidthFeet');
+    const secondWidthInchesEl = document.getElementById('secondWidthInches');
+    const secondLengthFeetEl = document.getElementById('secondLengthFeet');
+    const secondLengthInchesEl = document.getElementById('secondLengthInches');
+    const deckHeightEl = document.getElementById('deckHeight');
+    const boardLengthEl = document.getElementById('boardLength');
+    const boardDirectionEl = document.getElementById('boardDirection');
+    const boardPatternEl = document.getElementById('boardPattern');
+    const pictureFrameEl = document.getElementById('pictureFrame');
+    const railingsEl = document.getElementById('railings');
+    const boardColorEl = document.getElementById('boardColor');
+
+    if (shapeEl) shapeEl.value = deck.shape;
+    if (widthFeetEl) widthFeetEl.value = Math.floor(deck.width);
+    if (widthInchesEl) widthInchesEl.value = Math.round((deck.width % 1) * 12);
+    if (lengthFeetEl) lengthFeetEl.value = Math.floor(deck.length);
+    if (lengthInchesEl) lengthInchesEl.value = Math.round((deck.length % 1) * 12);
+    if (wingWidthFeetEl) wingWidthFeetEl.value = Math.floor(deck.wingWidth);
+    if (wingWidthInchesEl) wingWidthInchesEl.value = Math.round((deck.wingWidth % 1) * 12);
+    if (wingLengthFeetEl) wingLengthFeetEl.value = Math.floor(deck.wingLength);
+    if (wingLengthInchesEl) wingLengthInchesEl.value = Math.round((deck.wingLength % 1) * 12);
+    if (secondWidthFeetEl) secondWidthFeetEl.value = Math.floor(deck.secondWidth);
+    if (secondWidthInchesEl) secondWidthInchesEl.value = Math.round((deck.secondWidth % 1) * 12);
+    if (secondLengthFeetEl) secondLengthFeetEl.value = Math.floor(deck.secondLength);
+    if (secondLengthInchesEl) secondLengthInchesEl.value = Math.round((deck.secondLength % 1) * 12);
+    if (deckHeightEl) deckHeightEl.value = deck.height;
+    if (boardLengthEl) boardLengthEl.value = deck.boardLength;
+    if (boardDirectionEl) boardDirectionEl.value = deck.boardDirection;
+    if (boardPatternEl) boardPatternEl.value = deck.boardPattern;
+    if (pictureFrameEl) pictureFrameEl.checked = deck.pictureFrame;
+    if (railingsEl) railingsEl.checked = deck.railings;
+    if (boardColorEl) boardColorEl.value = deck.color;
     updateShapeInputs();
 }
 
 function buildDeck() {
     deck.shape = document.getElementById('deckShape').value;
-    deck.width = parseFloat(document.getElementById('widthFeet').value) + parseFloat(document.getElementById('widthInches').value || 0) / 12;
-    deck.length = parseFloat(document.getElementById('lengthFeet').value) + parseFloat(document.getElementById('lengthInches').value || 0) / 12;
+    deck.width = parseFloat(document.getElementById('widthFeet').value || 0) + parseFloat(document.getElementById('widthInches').value || 0) / 12;
+    deck.length = parseFloat(document.getElementById('lengthFeet').value || 0) + parseFloat(document.getElementById('lengthInches').value || 0) / 12;
     deck.wingWidth = parseFloat(document.getElementById('wingWidthFeet').value || 0) + parseFloat(document.getElementById('wingWidthInches').value || 0) / 12;
     deck.wingLength = parseFloat(document.getElementById('wingLengthFeet').value || 0) + parseFloat(document.getElementById('wingLengthInches').value || 0) / 12;
     deck.secondWidth = parseFloat(document.getElementById('secondWidthFeet').value || 0) + parseFloat(document.getElementById('secondWidthInches').value || 0) / 12;
     deck.secondLength = parseFloat(document.getElementById('secondLengthFeet').value || 0) + parseFloat(document.getElementById('secondLengthInches').value || 0) / 12;
-    deck.height = parseFloat(document.getElementById('deckHeight').value);
+    deck.height = parseFloat(document.getElementById('deckHeight').value || 0);
     deck.boardLength = document.getElementById('boardLength').value;
     deck.boardDirection = document.getElementById('boardDirection').value;
     deck.boardPattern = document.getElementById('boardPattern').value;
@@ -377,7 +424,7 @@ function buildDeck() {
     deck.railings = document.getElementById('railings').checked;
     deck.color = document.getElementById('boardColor').value;
 
-    buildDeck();
+    buildDeckInternal();
 }
 
 // Prompt System
@@ -407,8 +454,17 @@ const prompts = [
 let currentPrompt = 0;
 
 function showPrompt() {
-    document.getElementById('prompt').style.display = 'block';
+    const promptEl = document.getElementById('prompt');
     const questionDiv = document.getElementById('prompt-questions');
+    if (!promptEl || !questionDiv) {
+        console.error('Prompt elements not found');
+        skipPrompt();
+        return;
+    }
+
+    promptEl.style.display = 'block';
+    updateLoading(0.5);
+
     if (currentPrompt < prompts.length) {
         const prompt = prompts[currentPrompt];
         questionDiv.innerHTML = `
@@ -418,44 +474,80 @@ function showPrompt() {
             </select>
         `;
     } else {
-        document.getElementById('prompt').style.display = 'none';
+        promptEl.style.display = 'none';
         updateUI();
-        buildDeck();
+        buildDeckInternal();
         showTutorial();
     }
 }
 
 function nextPrompt() {
-    if (currentPrompt < prompts.length) {
-        const answer = document.getElementById('prompt-answer').value;
-        prompts[currentPrompt].callback(answer);
-        currentPrompt++;
-        showPrompt();
+    try {
+        const answerEl = document.getElementById('prompt-answer');
+        if (!answerEl) {
+            console.error('Prompt answer element not found');
+            return;
+        }
+
+        const answer = answerEl.value;
+        if (!answer) {
+            console.warn('No answer selected');
+            return;
+        }
+
+        if (currentPrompt < prompts.length) {
+            prompts[currentPrompt].callback(answer);
+            currentPrompt++;
+            showPrompt();
+        }
+    } catch (error) {
+        console.error('Error in nextPrompt:', error);
     }
 }
 
 function skipPrompt() {
-    document.getElementById('prompt').style.display = 'none';
-    updateUI();
-    buildDeck();
-    showTutorial();
+    try {
+        const promptEl = document.getElementById('prompt');
+        if (promptEl) {
+            promptEl.style.display = 'none';
+        }
+        updateUI();
+        buildDeckInternal();
+        showTutorial();
+        updateLoading(1);
+    } catch (error) {
+        console.error('Error in skipPrompt:', error);
+        updateLoading(1); // Force hide loading screen
+    }
 }
 
 // Tutorial and Help
 function showTutorial() {
-    document.getElementById('tutorial').style.display = 'block';
+    const tutorialEl = document.getElementById('tutorial');
+    if (tutorialEl) {
+        tutorialEl.style.display = 'block';
+    }
 }
 
 function closeTutorial() {
-    document.getElementById('tutorial').style.display = 'none';
+    const tutorialEl = document.getElementById('tutorial');
+    if (tutorialEl) {
+        tutorialEl.style.display = 'none';
+    }
 }
 
 function showHelp() {
-    document.getElementById('help').style.display = 'block';
+    const helpEl = document.getElementById('help');
+    if (helpEl) {
+        helpEl.style.display = 'block';
+    }
 }
 
 function closeHelp() {
-    document.getElementById('help').style.display = 'none';
+    const helpEl = document.getElementById('help');
+    if (helpEl) {
+        helpEl.style.display = 'none';
+    }
 }
 
 // Drag and Drop
@@ -539,9 +631,15 @@ window.addEventListener('touchend', () => {
 // Orientation Prompt
 window.addEventListener('orientationchange', () => {
     if (window.innerWidth < 768 && window.orientation === 0) {
-        document.getElementById('orientation-prompt').style.display = 'flex';
+        const orientationPrompt = document.getElementById('orientation-prompt');
+        if (orientationPrompt) {
+            orientationPrompt.style.display = 'flex';
+        }
     } else {
-        document.getElementById('orientation-prompt').style.display = 'none';
+        const orientationPrompt = document.getElementById('orientation-prompt');
+        if (orientationPrompt) {
+            orientationPrompt.style.display = 'none';
+        }
     }
 });
 
@@ -623,7 +721,7 @@ function exportDesign() {
 
 // Initialize
 camera.position.set(10, 5, 10);
-buildDeck();
+buildDeckInternal();
 showPrompt();
 updateLoading(0.5);
 
