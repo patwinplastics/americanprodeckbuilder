@@ -24,7 +24,7 @@
     </div>
     <div id="container">
         <div id="sidebar">
-            <h1 id="logo">American Pro Decking</h1>
+            <img src="assets/logo.png" alt="American Pro Decking Logo" id="logo">
             <h2>Deck Designer</h2>
             <div class="tab-buttons">
                 <button class="tab-button active" onclick="openTab('deck-tab')">Deck</button>
@@ -138,8 +138,8 @@
             <div id="results-tab" class="tab-content">
                 <h3>Design Summary</h3>
                 <pre id="design-summary"></pre>
-                <p id="material-list">Materials: N/A</p>
-                <p id="cost-estimate">Estimated Cost: N/A</p>
+            </div>
+            <div class="input-group">
                 <button onclick="exportDesign()" title="Export design as JSON and PDF">Export Design</button>
                 <button onclick="showHelp()" title="View help and FAQ">Help/FAQ</button>
             </div>
@@ -156,7 +156,7 @@
     <div id="tutorial" style="display: none;">
         <h3>Tutorial</h3>
         <p>Use mouse/touch to orbit, zoom, and pan. Drag boards to reposition (snaps to grid).</p>
-        <p>Adjust settings in the sidebar tabs. Export designs via the Results tab.</p>
+        <p>Adjust settings in the sidebar tabs. Export designs via the Export Design button.</p>
         <button onclick="closeTutorial()">Close</button>
     </div>
     <div id="help" style="display: none;">
