@@ -2,7 +2,7 @@
 
 // Three.js Setup
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x87ceeb, 0.002); // Subtle fog for depth
+scene.fog = new THREE.FogExp2(0x87ceeb, 0.002);
 const camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 350) / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth - 350, window.innerHeight);
@@ -16,19 +16,19 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0x404040, 0.6); // Softer ambient
+const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
 scene.add(ambientLight);
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Brighter sunlight
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(15, 20, 10);
 directionalLight.castShadow = true;
-directionalLight.shadow.mapSize.width = 2048; // Higher res shadows
+directionalLight.shadow.mapSize.width = 2048;
 directionalLight.shadow.mapSize.height = 2048;
 directionalLight.shadow.camera.left = -20;
 directionalLight.shadow.camera.right = 20;
 directionalLight.shadow.camera.top = 20;
 directionalLight.shadow.camera.bottom = -20;
 scene.add(directionalLight);
-const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x228B22, 0.3); // Sky/ground light
+const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x228B22, 0.3);
 scene.add(hemiLight);
 
 // Sky
@@ -74,11 +74,27 @@ let history = [];
 let historyIndex = -1;
 let materialList = { boards: 0, joists: 0, railings: 0 };
 
-// Wood Texture
+// Wood Texture with Fallback
 const textureLoader = new THREE.TextureLoader();
-const woodTexture = textureLoader.load('https://threejs.org/examples/textures/wood.jpg', () => updateLoading(0.3));
-woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
-woodTexture.repeat.set(0.5, 2); // Adjusted for more realistic grain
+let woodTexture = null;
+textureLoader.load(
+    'https://threejs.org/examples/textures/wood.jpg',
+    (texture) => {
+        woodTexture = texture;
+        woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
+        woodTexture.repeat.set(0.5, 2);
+        console.log('Wood texture loaded successfully');
+        updateLoading(0.3);
+        buildDeckInternal(); // Rebuild deck with texture
+    },
+    undefined,
+    (error) => {
+        console.error('Failed to load wood texture:', error);
+        woodTexture = null; // Fallback to color-only material
+        updateLoading(0.3);
+        buildDeckInternal();
+    }
+);
 
 // Loading Screen
 let loadProgress = 0;
@@ -105,17 +121,25 @@ function buildDeckInternal() {
 
     const boardThickness = 1 / 12;
     const boardWidth = 5.5 / 12;
-    const boardGap = 0.05; // Small gap between boards
+    const boardGap = 0.05;
     const joistSpacing = 16 / 12;
     const boardLengths = [12, 16, 20];
     const deckHeight = deck.height;
-    const deckMaterial = new THREE.MeshLambertMaterial({
-        map: woodTexture,
+
+    // Material with fallback
+    const deckMaterial = new THREE.MeshStandardMaterial({
         color: parseInt(deck.color.replace('#', '0x')),
         roughness: 0.8,
         metalness: 0.1
     });
+    if (woodTexture) {
+        deckMaterial.map = woodTexture;
+    } else {
+        console.warn('Using fallback color for deck material due to texture loading failure');
+    }
     deckMaterial.castShadow = true;
+
+    const joistMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9, metalness: 0.1 });
     materialList = { boards: 0, joists: 0, railings: 0 };
 
     function addJoists(width, length, offsetX = 0, offsetZ = 0, height = deckHeight) {
@@ -123,7 +147,7 @@ function buildDeckInternal() {
         for (let i = 0; i < joistCount; i++) {
             const x = i * joistSpacing - width / 2 + offsetX;
             const joistGeometry = new THREE.BoxGeometry(length, 7.25 / 12, 1.5 / 12);
-            const joist = new THREE.Mesh(joistGeometry, new THREE.MeshLambertMaterial({ color: 0x8B4513 }));
+            const joist = new THREE.Mesh(joistGeometry, joistMaterial);
             joist.position.set(x, height - boardThickness - 7.25 / 24, offsetZ);
             joist.castShadow = true;
             deckGroup.add(joist);
@@ -193,13 +217,12 @@ function buildDeckInternal() {
 
     function addRailings(width, length, height = deckHeight) {
         const postGeometry = new THREE.BoxGeometry(0.33, 3, 0.33);
-        const railGeometry = new THREE.BoxGeometry(0.1, 0.1, 1); // Horizontal rail
-        const railMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const railGeometry = new THREE.BoxGeometry(0.1, 0.1, 1);
+        const railMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9, metalness: 0.1 });
         const postSpacing = 6;
         const postCountX = Math.floor(width / postSpacing) + 1;
         const postCountZ = Math.floor(length / postSpacing) + 1;
 
-        // Posts along top and bottom
         for (let i = 0; i < postCountX; i++) {
             const x = i * postSpacing - width / 2;
             const postTop = new THREE.Mesh(postGeometry, railMaterial);
@@ -213,7 +236,6 @@ function buildDeckInternal() {
             deckGroup.add(postBottom);
             materialList.railings++;
 
-            // Horizontal rails between posts (top edge)
             if (i < postCountX - 1) {
                 const railLength = postSpacing;
                 const rail = new THREE.Mesh(new THREE.BoxGeometry(railLength, 0.1, 0.1), railMaterial);
@@ -225,7 +247,6 @@ function buildDeckInternal() {
             }
         }
 
-        // Posts along sides
         for (let i = 1; i < postCountZ - 1; i++) {
             const z = i * postSpacing - length / 2;
             const postRight = new THREE.Mesh(postGeometry, railMaterial);
@@ -240,7 +261,6 @@ function buildDeckInternal() {
             materialList.railings++;
         }
 
-        // Horizontal rails along sides
         for (let i = 0; i < postCountZ - 1; i++) {
             const z = i * postSpacing - length / 2;
             const railLength = postSpacing;
@@ -778,8 +798,7 @@ function exportDesign() {
 camera.position.set(15, 10, 15);
 controls.target.set(0, deck.height, 0);
 controls.update();
-buildDeckInternal();
-showPrompt();
+// Delay initial build until texture is loaded or failed
 updateLoading(0.5);
 
 // Animation Loop
