@@ -2,6 +2,7 @@
 
 // Three.js Setup
 const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x87ceeb, 0.002); // Subtle fog for depth
 const camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 350) / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth - 350, window.innerHeight);
@@ -15,16 +16,28 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+const ambientLight = new THREE.AmbientLight(0x404040, 0.6); // Softer ambient
 scene.add(ambientLight);
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-directionalLight.position.set(10, 10, 10);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Brighter sunlight
+directionalLight.position.set(15, 20, 10);
 directionalLight.castShadow = true;
+directionalLight.shadow.mapSize.width = 2048; // Higher res shadows
+directionalLight.shadow.mapSize.height = 2048;
+directionalLight.shadow.camera.left = -20;
+directionalLight.shadow.camera.right = 20;
+directionalLight.shadow.camera.top = 20;
+directionalLight.shadow.camera.bottom = -20;
 scene.add(directionalLight);
+const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x228B22, 0.3); // Sky/ground light
+scene.add(hemiLight);
 
 // Sky
 const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
-const skyMaterial = new THREE.MeshBasicMaterial({ color: 0x87ceeb, side: THREE.BackSide });
+const skyMaterial = new THREE.MeshBasicMaterial({
+    color: 0x87ceeb,
+    side: THREE.BackSide,
+    vertexColors: false
+});
 const sky = new THREE.Mesh(skyGeometry, skyMaterial);
 scene.add(sky);
 
@@ -65,7 +78,7 @@ let materialList = { boards: 0, joists: 0, railings: 0 };
 const textureLoader = new THREE.TextureLoader();
 const woodTexture = textureLoader.load('https://threejs.org/examples/textures/wood.jpg', () => updateLoading(0.3));
 woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
-woodTexture.repeat.set(0.1, 1);
+woodTexture.repeat.set(0.5, 2); // Adjusted for more realistic grain
 
 // Loading Screen
 let loadProgress = 0;
@@ -92,10 +105,16 @@ function buildDeckInternal() {
 
     const boardThickness = 1 / 12;
     const boardWidth = 5.5 / 12;
+    const boardGap = 0.05; // Small gap between boards
     const joistSpacing = 16 / 12;
     const boardLengths = [12, 16, 20];
     const deckHeight = deck.height;
-    const deckMaterial = new THREE.MeshLambertMaterial({ map: woodTexture, color: parseInt(deck.color.replace('#', '0x')) });
+    const deckMaterial = new THREE.MeshLambertMaterial({
+        map: woodTexture,
+        color: parseInt(deck.color.replace('#', '0x')),
+        roughness: 0.8,
+        metalness: 0.1
+    });
     deckMaterial.castShadow = true;
     materialList = { boards: 0, joists: 0, railings: 0 };
 
@@ -114,9 +133,10 @@ function buildDeckInternal() {
 
     function addBoards(width, length, offsetX = 0, offsetZ = 0, height = deckHeight, direction = deck.boardDirection, pattern = deck.boardPattern) {
         let boards = [];
-        const boardCount = Math.ceil(direction === 'horizontal' ? width / boardWidth : length / boardWidth);
+        const effectiveBoardWidth = boardWidth + boardGap;
+        const boardCount = Math.ceil(direction === 'horizontal' ? width / effectiveBoardWidth : length / effectiveBoardWidth);
         for (let i = 0; i < boardCount; i++) {
-            const pos = i * boardWidth - (direction === 'horizontal' ? width : length) / 2 + boardWidth / 2;
+            const pos = i * effectiveBoardWidth - (direction === 'horizontal' ? width : length) / 2 + boardWidth / 2;
             let remaining = direction === 'horizontal' ? length : width;
             let coord = -(direction === 'horizontal' ? length : width) / 2;
 
@@ -145,17 +165,18 @@ function buildDeckInternal() {
     }
 
     function addPictureFrame(width, length, height = deckHeight) {
-        const frameGeometry = new THREE.BoxGeometry(width + 2 * boardWidth, boardThickness, boardWidth);
+        const effectiveBoardWidth = boardWidth + boardGap;
+        const frameGeometry = new THREE.BoxGeometry(width + 2 * effectiveBoardWidth, boardThickness, boardWidth);
         const frameTop = new THREE.Mesh(frameGeometry, deckMaterial);
         frameTop.position.set(0, height, length / 2 + boardWidth / 2);
         frameTop.castShadow = true;
         deckGroup.add(frameTop);
-        materialList.boards += Math.ceil((width + 2 * boardWidth) / boardWidth);
+        materialList.boards += Math.ceil((width + 2 * effectiveBoardWidth) / boardWidth);
 
         const frameBottom = frameTop.clone();
         frameBottom.position.z = -length / 2 - boardWidth / 2;
         deckGroup.add(frameBottom);
-        materialList.boards += Math.ceil((width + 2 * boardWidth) / boardWidth);
+        materialList.boards += Math.ceil((width + 2 * effectiveBoardWidth) / boardWidth);
 
         const sideFrameGeometry = new THREE.BoxGeometry(boardWidth, boardThickness, length);
         const frameRight = new THREE.Mesh(sideFrameGeometry, deckMaterial);
@@ -172,11 +193,13 @@ function buildDeckInternal() {
 
     function addRailings(width, length, height = deckHeight) {
         const postGeometry = new THREE.BoxGeometry(0.33, 3, 0.33);
+        const railGeometry = new THREE.BoxGeometry(0.1, 0.1, 1); // Horizontal rail
         const railMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
         const postSpacing = 6;
         const postCountX = Math.floor(width / postSpacing) + 1;
         const postCountZ = Math.floor(length / postSpacing) + 1;
 
+        // Posts along top and bottom
         for (let i = 0; i < postCountX; i++) {
             const x = i * postSpacing - width / 2;
             const postTop = new THREE.Mesh(postGeometry, railMaterial);
@@ -189,8 +212,20 @@ function buildDeckInternal() {
             postBottom.position.z = -length / 2;
             deckGroup.add(postBottom);
             materialList.railings++;
+
+            // Horizontal rails between posts (top edge)
+            if (i < postCountX - 1) {
+                const railLength = postSpacing;
+                const rail = new THREE.Mesh(new THREE.BoxGeometry(railLength, 0.1, 0.1), railMaterial);
+                rail.position.set(x + postSpacing / 2, height + 2.5, length / 2);
+                deckGroup.add(rail);
+                const railLower = rail.clone();
+                railLower.position.y = height + 1;
+                deckGroup.add(railLower);
+            }
         }
 
+        // Posts along sides
         for (let i = 1; i < postCountZ - 1; i++) {
             const z = i * postSpacing - length / 2;
             const postRight = new THREE.Mesh(postGeometry, railMaterial);
@@ -203,6 +238,25 @@ function buildDeckInternal() {
             postLeft.position.x = -width / 2;
             deckGroup.add(postLeft);
             materialList.railings++;
+        }
+
+        // Horizontal rails along sides
+        for (let i = 0; i < postCountZ - 1; i++) {
+            const z = i * postSpacing - length / 2;
+            const railLength = postSpacing;
+            const railRight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, railLength), railMaterial);
+            railRight.position.set(width / 2, height + 2.5, z + postSpacing / 2);
+            deckGroup.add(railRight);
+            const railRightLower = railRight.clone();
+            railRightLower.position.y = height + 1;
+            deckGroup.add(railRightLower);
+
+            const railLeft = railRight.clone();
+            railLeft.position.x = -width / 2;
+            deckGroup.add(railLeft);
+            const railLeftLower = railLeft.clone();
+            railLeftLower.position.y = height + 1;
+            deckGroup.add(railLeftLower);
         }
     }
 
@@ -261,7 +315,7 @@ function buildDeckInternal() {
         updateLoading(1);
     } catch (error) {
         console.error('Error building deck:', error);
-        updateLoading(1); // Ensure loading screen hides even on error
+        updateLoading(1);
     }
 }
 
@@ -326,20 +380,21 @@ function updateMaterials() {
 
 function updateLighting() {
     const mode = document.getElementById('lightingMode').value;
-    ambientLight.intensity = mode === 'day' ? 0.5 : 0.2;
-    directionalLight.intensity = mode === 'day' ? 0.5 : 0.1;
+    ambientLight.intensity = mode === 'day' ? 0.6 : 0.2;
+    directionalLight.intensity = mode === 'day' ? 0.8 : 0.1;
+    hemiLight.intensity = mode === 'day' ? 0.3 : 0.1;
 }
 
 function setCameraView() {
     const view = document.getElementById('cameraView').value;
     if (view === 'top') {
-        camera.position.set(0, 20, 0);
-        controls.target.set(0, 0, 0);
+        camera.position.set(0, 30, 0);
+        controls.target.set(0, deck.height, 0);
     } else if (view === 'side') {
-        camera.position.set(20, deck.height + 2, 0);
+        camera.position.set(25, deck.height + 5, 0);
         controls.target.set(0, deck.height, 0);
     } else {
-        camera.position.set(10, 5, 10);
+        camera.position.set(15, 10, 15);
         controls.target.set(0, deck.height, 0);
     }
     controls.update();
@@ -517,7 +572,7 @@ function skipPrompt() {
         updateLoading(1);
     } catch (error) {
         console.error('Error in skipPrompt:', error);
-        updateLoading(1); // Force hide loading screen
+        updateLoading(1);
     }
 }
 
@@ -720,7 +775,9 @@ function exportDesign() {
 }
 
 // Initialize
-camera.position.set(10, 5, 10);
+camera.position.set(15, 10, 15);
+controls.target.set(0, deck.height, 0);
+controls.update();
 buildDeckInternal();
 showPrompt();
 updateLoading(0.5);
