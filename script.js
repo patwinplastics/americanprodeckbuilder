@@ -85,12 +85,12 @@ textureLoader.load(
         woodTexture.repeat.set(0.5, 2);
         console.log('Wood texture loaded successfully');
         updateLoading(0.3);
-        buildDeckInternal(); // Rebuild deck with texture
+        buildDeckInternal();
     },
     undefined,
     (error) => {
         console.error('Failed to load wood texture:', error);
-        woodTexture = null; // Fallback to color-only material
+        woodTexture = null;
         updateLoading(0.3);
         buildDeckInternal();
     }
@@ -122,7 +122,7 @@ function buildDeckInternal() {
     const boardThickness = 1 / 12;
     const boardWidth = 5.5 / 12;
     const boardGap = 0.05;
-    const joistSpacing = 16 / 12;
+    const joistSpacing = 16 / 12; // 16 inches in feet
     const boardLengths = [12, 16, 20];
     const deckHeight = deck.height;
 
@@ -144,12 +144,14 @@ function buildDeckInternal() {
 
     function addJoists(width, length, offsetX = 0, offsetZ = 0, height = deckHeight) {
         const joistCount = Math.floor(width / joistSpacing) + 1;
+        console.log(`Adding ${joistCount} joists for width ${width} ft, length ${length} ft, offsetX ${offsetX}, offsetZ ${offsetZ}`);
         for (let i = 0; i < joistCount; i++) {
-            const x = i * joistSpacing - width / 2 + offsetX;
+            const x = i * joistSpacing - (width / 2) + offsetX;
             const joistGeometry = new THREE.BoxGeometry(length, 7.25 / 12, 1.5 / 12);
             const joist = new THREE.Mesh(joistGeometry, joistMaterial);
-            joist.position.set(x, height - boardThickness - 7.25 / 24, offsetZ);
+            joist.position.set(x, height - boardThickness - (7.25 / 24), offsetZ);
             joist.castShadow = true;
+            joist.receiveShadow = true;
             deckGroup.add(joist);
             materialList.joists++;
         }
@@ -175,9 +177,7 @@ function buildDeckInternal() {
                     board.position.set(direction === 'horizontal' ? pos + offsetX : coord + lengthToUse / 2 + offsetX, height, direction === 'horizontal' ? coord + lengthToUse / 2 + offsetZ : pos + offsetZ);
                 }
                 board.castShadow = true;
-                board.userData.draggable = true;
-                board.userData.snapX = board.position.x;
-                board.userData.snapZ = board.position.z;
+                board.receiveShadow = true;
                 boards.push(board);
                 deckGroup.add(board);
                 materialList.boards++;
@@ -288,43 +288,55 @@ function buildDeckInternal() {
             if (deck.pictureFrame) addPictureFrame(deck.width, deck.length);
             if (deck.railings) addRailings(deck.width, deck.length);
         } else if (deck.shape === 'l-shaped') {
+            // Main section
             addJoists(deck.width, deck.length);
-            addJoists(deck.wingWidth, deck.wingLength, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2);
             allBoards = allBoards.concat(addBoards(deck.width, deck.length));
-            allBoards = allBoards.concat(addBoards(deck.wingWidth, deck.wingLength, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2));
+            // Wing section
+            const wingOffsetX = deck.width / 2 - (deck.wingWidth / 2);
+            const wingOffsetZ = -(deck.length / 2) + (deck.wingLength / 2);
+            addJoists(deck.wingWidth, deck.wingLength, wingOffsetX, wingOffsetZ);
+            allBoards = allBoards.concat(addBoards(deck.wingWidth, deck.wingLength, wingOffsetX, wingOffsetZ));
             if (deck.pictureFrame) {
                 addPictureFrame(deck.width, deck.length);
-                addPictureFrame(deck.wingWidth, deck.wingLength, deck.height, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2);
+                addPictureFrame(deck.wingWidth, deck.wingLength, deck.height, wingOffsetX, wingOffsetZ);
             }
             if (deck.railings) {
                 addRailings(deck.width, deck.length);
-                addRailings(deck.wingWidth, deck.wingLength, deck.width / 2 + deck.wingWidth / 2, -deck.length / 2 + deck.wingLength / 2);
+                addRailings(deck.wingWidth, deck.wingLength, wingOffsetX, wingOffsetZ);
             }
         } else if (deck.shape === 't-shaped') {
+            // Main section
             addJoists(deck.width, deck.length);
-            addJoists(deck.wingWidth, deck.wingLength, 0, deck.length / 2 + deck.wingLength / 2);
             allBoards = allBoards.concat(addBoards(deck.width, deck.length));
-            allBoards = allBoards.concat(addBoards(deck.wingWidth, deck.wingLength, 0, deck.length / 2 + deck.wingLength / 2));
+            // Wing section (top of T)
+            const wingOffsetX = 0;
+            const wingOffsetZ = (deck.length / 2) - (deck.wingLength / 2);
+            addJoists(deck.wingWidth, deck.wingLength, wingOffsetX, wingOffsetZ);
+            allBoards = allBoards.concat(addBoards(deck.wingWidth, deck.wingLength, wingOffsetX, wingOffsetZ));
             if (deck.pictureFrame) {
                 addPictureFrame(deck.width, deck.length);
-                addPictureFrame(deck.wingWidth, deck.wingLength, deck.height, 0, deck.length / 2 + deck.wingLength / 2);
+                addPictureFrame(deck.wingWidth, deck.wingLength, deck.height, wingOffsetX, wingOffsetZ);
             }
             if (deck.railings) {
                 addRailings(deck.width, deck.length);
-                addRailings(deck.wingWidth, deck.wingLength, 0, deck.length / 2 + deck.wingLength / 2);
+                addRailings(deck.wingWidth, deck.wingLength, wingOffsetX, wingOffsetZ);
             }
         } else if (deck.shape === 'multi-level') {
+            // First level
             addJoists(deck.width, deck.length);
-            addJoists(deck.secondWidth, deck.secondLength, 0, deck.length / 2 + deck.secondLength / 2, deck.height + 1);
             allBoards = allBoards.concat(addBoards(deck.width, deck.length));
-            allBoards = allBoards.concat(addBoards(deck.secondWidth, deck.secondLength, 0, deck.length / 2 + deck.secondLength / 2, deck.height + 1));
+            // Second level
+            const secondOffsetX = 0;
+            const secondOffsetZ = (deck.length / 2) - (deck.secondLength / 2);
+            addJoists(deck.secondWidth, deck.secondLength, secondOffsetX, secondOffsetZ, deck.height + 1);
+            allBoards = allBoards.concat(addBoards(deck.secondWidth, deck.secondLength, secondOffsetX, secondOffsetZ, deck.height + 1));
             if (deck.pictureFrame) {
                 addPictureFrame(deck.width, deck.length);
-                addPictureFrame(deck.secondWidth, deck.secondLength, deck.height + 1, 0, deck.length / 2 + deck.secondLength / 2);
+                addPictureFrame(deck.secondWidth, deck.secondLength, deck.height + 1, secondOffsetX, secondOffsetZ);
             }
             if (deck.railings) {
                 addRailings(deck.width, deck.length);
-                addRailings(deck.secondWidth, deck.secondLength, 0, deck.length / 2 + deck.secondLength / 2, deck.height + 1);
+                addRailings(deck.secondWidth, deck.secondLength, secondOffsetX, secondOffsetZ, deck.height + 1);
             }
         }
 
@@ -337,6 +349,7 @@ function buildDeckInternal() {
         console.error('Error building deck:', error);
         updateLoading(1);
     }
+    console.log(`Total joists added: ${materialList.joists}`);
 }
 
 // Cost Estimation and Summary
@@ -625,84 +638,6 @@ function closeHelp() {
     }
 }
 
-// Drag and Drop
-let selectedBoard = null;
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-window.addEventListener('mousedown', (event) => {
-    mouse.x = ((event.clientX - 350) / (window.innerWidth - 350)) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(deckGroup.children);
-    if (intersects.length > 0 && intersects[0].object.userData.draggable) {
-        selectedBoard = intersects[0].object;
-        controls.enabled = false;
-    }
-});
-
-window.addEventListener('mousemove', (event) => {
-    if (selectedBoard) {
-        mouse.x = ((event.clientX - 350) / (window.innerWidth - 350)) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObject(ground);
-        if (intersects.length > 0) {
-            const snapGrid = 0.5;
-            selectedBoard.position.x = Math.round(intersects[0].point.x / snapGrid) * snapGrid;
-            selectedBoard.position.z = Math.round(intersects[0].point.z / snapGrid) * snapGrid;
-            selectedBoard.position.y = deck.shape === 'multi-level' && selectedBoard.position.z > deck.length / 2 ? deck.height + 1 : deck.height;
-        }
-    }
-});
-
-window.addEventListener('mouseup', () => {
-    if (selectedBoard) {
-        selectedBoard.position.x = selectedBoard.userData.snapX;
-        selectedBoard.position.z = selectedBoard.userData.snapZ;
-        selectedBoard = null;
-        controls.enabled = true;
-    }
-});
-
-// Touch Support
-window.addEventListener('touchstart', (event) => {
-    const touch = event.touches[0];
-    mouse.x = ((touch.clientX - 350) / (window.innerWidth - 350)) * 2 - 1;
-    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(deckGroup.children);
-    if (intersects.length > 0 && intersects[0].object.userData.draggable) {
-        selectedBoard = intersects[0].object;
-        controls.enabled = false;
-    }
-});
-
-window.addEventListener('touchmove', (event) => {
-    if (selectedBoard) {
-        const touch = event.touches[0];
-        mouse.x = ((touch.clientX - 350) / (window.innerWidth - 350)) * 2 - 1;
-        mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObject(ground);
-        if (intersects.length > 0) {
-            const snapGrid = 0.5;
-            selectedBoard.position.x = Math.round(intersects[0].point.x / snapGrid) * snapGrid;
-            selectedBoard.position.z = Math.round(intersects[0].point.z / snapGrid) * snapGrid;
-            selectedBoard.position.y = deck.shape === 'multi-level' && selectedBoard.position.z > deck.length / 2 ? deck.height + 1 : deck.height;
-        }
-    }
-});
-
-window.addEventListener('touchend', () => {
-    if (selectedBoard) {
-        selectedBoard.position.x = selectedBoard.userData.snapX;
-        selectedBoard.position.z = selectedBoard.userData.snapZ;
-        selectedBoard = null;
-        controls.enabled = true;
-    }
-});
-
 // Orientation Prompt
 window.addEventListener('orientationchange', () => {
     if (window.innerWidth < 768 && window.orientation === 0) {
@@ -798,7 +733,6 @@ function exportDesign() {
 camera.position.set(15, 10, 15);
 controls.target.set(0, deck.height, 0);
 controls.update();
-// Delay initial build until texture is loaded or failed
 updateLoading(0.5);
 
 // Animation Loop
