@@ -115,7 +115,7 @@ class DeckBuilder {
             this.loaded = true;
             const unrealBloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth - 350, window.innerHeight), 0.8, 0.4, 0.85);
             this.composer.addPass(unrealBloomPass);
-            this.animate(); // REVISED: Call the bound animate
+            this.animate();
             showPrompt();
             updateLoading(1);
         }).catch(err => {
@@ -132,7 +132,7 @@ class DeckBuilder {
 
     async loadAssets() {
         return Promise.all([
-            new Promise((resolve, reject) => this.textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/hardwood2_diffuse.jpg', (tex) => { // REVISED: Stable GitHub URL
+            new Promise((resolve, reject) => this.textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/hardwood2_diffuse.jpg', (tex) => {
                 tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
                 tex.repeat.set(0.5, 2);
                 this.woodTexture = tex;
@@ -142,7 +142,7 @@ class DeckBuilder {
                 console.error('Diffuse texture load failed', err);
                 reject(err);
             })),
-            new Promise((resolve, reject) => this.textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/hardwood2_normal.jpg', (tex) => { // REVISED: Stable URL
+            new Promise((resolve, reject) => this.textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/hardwood2_normal.jpg', (tex) => {
                 this.normalTexture = tex;
                 updateLoading(0.2);
                 resolve();
@@ -150,7 +150,7 @@ class DeckBuilder {
                 console.error('Normal texture load failed', err);
                 reject(err);
             })),
-            new Promise((resolve, reject) => this.textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/hardwood2_roughness.jpg', (tex) => { // REVISED: Stable URL
+            new Promise((resolve, reject) => this.textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/hardwood2_roughness.jpg', (tex) => {
                 this.roughnessTexture = tex;
                 updateLoading(0.2);
                 resolve();
@@ -158,7 +158,7 @@ class DeckBuilder {
                 console.error('Roughness texture load failed', err);
                 reject(err);
             })),
-            new Promise((resolve, reject) => new THREE.RGBELoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/equirectangular/venice_sunset_1k.hdr', (hdr) => { // REVISED: Stable URL
+            new Promise((resolve, reject) => new THREE.RGBELoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/equirectangular/venice_sunset_1k.hdr', (hdr) => {
                 hdr.mapping = THREE.EquirectangularReflectionMapping;
                 this.envMap = hdr;
                 this.scene.background = this.envMap;
@@ -176,9 +176,8 @@ class DeckBuilder {
         this.deckGroup.clear();
         this.materialList = { totalBoardFeet: 0, totalJoistFeet: 0, totalRailFeet: 0, railingPosts: 0, stairFeet: 0, furnitureCount: 0 };
 
-        // REVISED: Material caching and fallback if textures null
         const deckMaterial = new THREE.MeshPhysicalMaterial({
-            map: this.woodTexture || new THREE.Texture(), // Fallback
+            map: this.woodTexture || new THREE.Texture(),
             normalMap: this.normalTexture,
             roughnessMap: this.roughnessTexture,
             color: parseInt(this.deck.color.replace('#', '0x')),
@@ -192,11 +191,7 @@ class DeckBuilder {
         const railMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9, metalness: 0.1 });
 
         try {
-            // REVISED: Input validation
-            this.deck.width = Math.max(1, this.deck.width); // Clamp to positive
-            // Similar for other dimensions...
-
-            // REVISED: Reconstructed addJoists with InstancedMesh for performance
+            this.deck.width = Math.max(1, this.deck.width);
             const addJoists = (deckWidth, deckLength, offsetX = 0, offsetZ = 0, levelHeight = this.deck.height) => {
                 const isHorizontal = this.deck.boardDirection === 'horizontal';
                 const spanDim = isHorizontal ? deckWidth : deckLength;
@@ -221,7 +216,6 @@ class DeckBuilder {
                 this.materialList.totalJoistFeet += spanDim * joistCount;
             };
 
-            // REVISED: Reconstructed addBoards with InstancedMesh
             const addBoards = (deckWidth, deckLength, offsetX = 0, offsetZ = 0, levelHeight = this.deck.height) => {
                 const isHorizontal = this.deck.boardDirection === 'horizontal';
                 const boardCount = Math.ceil((isHorizontal ? deckLength : deckWidth) / (this.boardWidth + this.boardGap));
@@ -244,10 +238,8 @@ class DeckBuilder {
                 this.materialList.totalBoardFeet += (isHorizontal ? deckWidth : deckLength) * boardCount;
             };
 
-            // REVISED: Reconstructed addDimensions using direct CanvasTexture (no data URL)
             const addDimensions = () => {
                 if (!this.deck.showDimensions) return;
-                // Example for main width
                 const canvas = document.createElement('canvas');
                 canvas.width = 128; canvas.height = 64;
                 const ctx = canvas.getContext('2d');
@@ -258,21 +250,17 @@ class DeckBuilder {
                     const texture = new THREE.CanvasTexture(canvas);
                     const material = new THREE.SpriteMaterial({ map: texture });
                     const sprite = new THREE.Sprite(material);
-                    sprite.position.set(this.deck.width / 2, this.deck.height + 1, 0); // Position above deck
-                    sprite.scale.set(2, 1, 1); // Scale for visibility
+                    sprite.position.set(this.deck.width / 2, this.deck.height + 1, 0);
+                    sprite.scale.set(2, 1, 1);
                     this.deckGroup.add(sprite);
                 }
-                // Repeat for other dimensions (length, height, etc.) – this avoids loops of invalid URLs
             };
 
-            // REVISED: Call for rectangular (expand for other shapes)
             if (this.deck.shape === 'rectangular') {
                 addJoists(this.deck.width, this.deck.length);
                 addBoards(this.deck.width, this.deck.length);
                 addDimensions();
-                // Add railings, stairs, etc., similarly
             }
-            // ... Expand for L/T/multi-level with offsets
 
             this.history = this.history.slice(0, this.historyIndex + 1);
             this.history.push(JSON.stringify(this.deck));
@@ -287,33 +275,28 @@ class DeckBuilder {
     }
 
     updateSummary() {
-        // REVISED: Enhanced summary with costs
         const sqFt = this.calculateSqFt();
         const totalCost = (this.materialList.totalBoardFeet * this.boardCostPerFoot +
                            this.materialList.totalJoistFeet * this.joistCostPerFoot +
-                           // ... other costs
                            ) * this.wasteFactor;
         document.getElementById('design-summary').innerText = `Square Footage: ${sqFt} sq ft\nTotal Cost Estimate: $${totalCost.toFixed(2)}\nFeatures: ${this.deck.shape}, Railings: ${this.deck.railings}`;
     }
 
     calculateSqFt() {
-        // REVISED: Basic calc, expand for shapes
         return this.deck.width * this.deck.length;
     }
 
     addChair() {
-        // REVISED: Simple parametric chair (box for seat, back)
         const geometry = new THREE.BoxGeometry(2, 2, 2);
         const material = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
         const chair = new THREE.Mesh(geometry, material);
-        chair.position.set(0, this.deck.height + 1, 0); // On deck
+        chair.position.set(0, this.deck.height + 1, 0);
         this.deckGroup.add(chair);
         this.materialList.furnitureCount++;
-        this.buildDeck(); // Rebuild to update
+        this.buildDeck();
     }
 
     addTable() {
-        // REVISED: Simple table
         const geometry = new THREE.BoxGeometry(4, 1, 4);
         const material = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
         const table = new THREE.Mesh(geometry, material);
@@ -323,7 +306,7 @@ class DeckBuilder {
         this.buildDeck();
     }
 
-    animate = () => { // REVISED: Arrow function to bind 'this'
+    animate = () => {
         requestAnimationFrame(this.animate);
         this.controls.update();
         this.composer.render();
@@ -332,7 +315,6 @@ class DeckBuilder {
 
 // UI Functions
 function openTab(tabId) {
-    // REVISED: Add ARIA updates if needed
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
@@ -400,33 +382,26 @@ function updateUI() {
     if (widthFeetEl) widthFeetEl.value = Math.floor(deckBuilder.deck.width);
     const widthInchesEl = document.getElementById('widthInches');
     if (widthInchesEl) widthInchesEl.value = Math.round((deckBuilder.deck.width % 1) * 12);
-    // REVISED: Sync all fields similarly
-    // ... (length, wing, etc.)
     updateShapeInputs();
 }
 
 function buildDeck() {
     deckBuilder.deck.shape = document.getElementById('deckShape').value;
     deckBuilder.deck.width = parseFloat(document.getElementById('widthFeet').value || 0) + parseFloat(document.getElementById('widthInches').value || 0) / 12;
-    // REVISED: Parse all fields with defaults and clamps
-    // ... (similar for length, etc.)
     deckBuilder.buildDeck();
 }
 
-// Prompt system
 const prompts = [
     {
         question: 'Deck Shape?',
         options: ['Rectangular', 'L-Shaped', 'T-Shaped', 'Multi-Level'],
         callback: (value) => deckBuilder.deck.shape = value.toLowerCase()
     },
-    // REVISED: Expanded prompts for better onboarding
     {
         question: 'Main Width (feet)?',
-        options: [], // Free input
+        options: [],
         callback: (value) => deckBuilder.deck.width = parseFloat(value) || 12
     },
-    // Add more as needed
 ];
 let currentPrompt = 0;
 
@@ -497,7 +472,6 @@ function skipPrompt() {
     }
 }
 
-// REVISED: Defined missing functions
 function showTutorial() {
     document.getElementById('tutorial').style.display = 'block';
 }
@@ -514,7 +488,6 @@ function closeHelp() {
     document.getElementById('help').style.display = 'none';
 }
 
-// REVISED: Stubs for export/import
 function exportDesign() {
     const json = JSON.stringify(deckBuilder.deck);
     const blob = new Blob([json], { type: 'application/json' });
@@ -523,7 +496,6 @@ function exportDesign() {
     a.href = url;
     a.download = 'deck-design.json';
     a.click();
-    // For PDF: Simple print (expand with jsPDF if needed)
     window.print();
 }
 
@@ -542,7 +514,6 @@ function importDesignJSON(event) {
 
 const deckBuilder = new DeckBuilder();
 
-// Debounce for real-time updates
 const debounce = (func, delay) => {
     let timer;
     return (...args) => {
@@ -551,10 +522,9 @@ const debounce = (func, delay) => {
     };
 };
 document.querySelectorAll('#sidebar input, #sidebar select, #sidebar [type="checkbox"]').forEach(el => {
-    el.addEventListener('input', debounce(buildDeck, 300)); // REVISED: Shorter delay for responsiveness
+    el.addEventListener('input', debounce(buildDeck, 300));
 });
 
-// Resize
 window.addEventListener('resize', () => {
     deckBuilder.camera.aspect = (window.innerWidth - 350) / window.innerHeight;
     deckBuilder.camera.updateProjectionMatrix();
@@ -562,7 +532,6 @@ window.addEventListener('resize', () => {
     deckBuilder.composer.setSize(window.innerWidth - 350, window.innerHeight);
 });
 
-// Orientation
 window.addEventListener('orientationchange', () => {
     if (window.innerWidth < 768 && window.orientation === 0) {
         document.getElementById('orientation-prompt').style.display = 'flex';
