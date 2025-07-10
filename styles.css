@@ -40,6 +40,7 @@ h2 {
     display: flex;
     justify-content: space-around;
     margin-bottom: 20px;
+    flex-wrap: wrap; /* Improved for mobile */
 }
 .tab-button {
     background-color: #34495e;
@@ -47,8 +48,8 @@ h2 {
     padding: 10px;
     color: white;
     cursor: pointer;
-    flex: 1;
-    margin: 0 5px;
+    flex: 1 1 100px; /* Flexible for more tabs */
+    margin: 5px;
     transition: background-color 0.3s;
 }
 .tab-button:hover {
@@ -91,15 +92,13 @@ button {
 button:hover {
     background-color: #16a085;
 }
-#design-summary, #material-list, #cost-estimate {
+#design-summary {
     background-color: #34495e;
     padding: 10px;
     border-radius: 5px;
     font-size: 0.9em;
     color: white;
     margin-bottom: 10px;
-}
-#design-summary {
     white-space: pre-wrap;
     overflow-x: auto;
 }
@@ -214,7 +213,7 @@ button:hover {
         font-size: 1.2em;
         padding: 8px;
     }
-    #design-summary, #material-list, #cost-estimate {
+    #design-summary {
         font-size: 1.1em;
         padding: 15px;
     }
