@@ -40,7 +40,7 @@ h2 {
     display: flex;
     justify-content: space-around;
     margin-bottom: 20px;
-    flex-wrap: wrap; /* Improved for mobile */
+    flex-wrap: wrap;
 }
 .tab-button {
     background-color: #34495e;
@@ -48,7 +48,7 @@ h2 {
     padding: 10px;
     color: white;
     cursor: pointer;
-    flex: 1 1 100px; /* Flexible for more tabs */
+    flex: 1 1 100px;
     margin: 5px;
     transition: background-color 0.3s;
 }
