@@ -30,7 +30,7 @@
                 <button class="tab-button active" onclick="openTab('deck-tab')">Deck</button>
                 <button class="tab-button" onclick="openTab('materials-tab')">Materials</button>
                 <button class="tab-button" onclick="openTab('environment-tab')">Environment</button>
-                <button class="tab-button" onclick="openTab('furniture-tab')">Furniture</button> <!-- New tab for furniture -->
+                <button class="tab-button" onclick="openTab('furniture-tab')">Furniture</button>
                 <button class="tab-button" onclick="openTab('results-tab')">Results</button>
             </div>
             <div id="deck-tab" class="tab-content active">
@@ -159,12 +159,12 @@
                             <option value="default">Default</option>
                             <option value="top">Top-Down</option>
                             <option value="side">Side</option>
-                            <option value="underside">Underside</option> <!-- New for joist view -->
+                            <option value="underside">Underside</option>
                         </select>
                     </label>
                 </div>
             </div>
-            <div id="furniture-tab" class="tab-content"> <!-- New tab -->
+            <div id="furniture-tab" class="tab-content">
                 <h3>Furniture</h3>
                 <div class="input-group">
                     <button onclick="addChair()">Add Chair</button>
@@ -207,9 +207,10 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/EffectComposer.js"></script> <!-- New for post-processing -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/EffectComposer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/BloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/RGBELoader.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
