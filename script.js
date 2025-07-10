@@ -1,3 +1,12 @@
+import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r165/three.module.min.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js';
+import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/RGBELoader.js';
+import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/postprocessing/ShaderPass.js';
+import { CopyShader } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/shaders/CopyShader.js';
+
 let loadProgress = 0;
 function updateLoading(progress) {
     loadProgress = Math.max(loadProgress, progress);
@@ -22,7 +31,7 @@ class DeckBuilder {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('canvas-container').appendChild(this.renderer.domElement);
 
-        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
 
@@ -106,14 +115,14 @@ class DeckBuilder {
         this.boardLengths = [12, 16, 20];
 
         this.loaded = false;
-        this.composer = new THREE.EffectComposer(this.renderer);
-        const renderPass = new THREE.RenderPass(this.scene, this.camera);
+        this.composer = new EffectComposer(this.renderer);
+        const renderPass = new RenderPass(this.scene, this.camera);
         this.composer.addPass(renderPass);
 
         // Load assets
         this.loadAssets().then(() => {
             this.loaded = true;
-            const unrealBloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth - 350, window.innerHeight), 0.8, 0.4, 0.85);
+            const unrealBloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth - 350, window.innerHeight), 0.8, 0.4, 0.85);
             this.composer.addPass(unrealBloomPass);
             this.animate();
             showPrompt();
@@ -158,7 +167,7 @@ class DeckBuilder {
                 console.error('Roughness texture load failed', err);
                 reject(err);
             })),
-            new Promise((resolve, reject) => new THREE.RGBELoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/equirectangular/venice_sunset_1k.hdr', (hdr) => {
+            new Promise((resolve, reject) => new RGBELoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/equirectangular/venice_sunset_1k.hdr', (hdr) => {
                 hdr.mapping = THREE.EquirectangularReflectionMapping;
                 this.envMap = hdr;
                 this.scene.background = this.envMap;
@@ -277,8 +286,7 @@ class DeckBuilder {
     updateSummary() {
         const sqFt = this.calculateSqFt();
         const totalCost = (this.materialList.totalBoardFeet * this.boardCostPerFoot +
-                           this.materialList.totalJoistFeet * this.joistCostPerFoot +
-                           ) * this.wasteFactor;
+                           this.materialList.totalJoistFeet * this.joistCostPerFoot) * this.wasteFactor;
         document.getElementById('design-summary').innerText = `Square Footage: ${sqFt} sq ft\nTotal Cost Estimate: $${totalCost.toFixed(2)}\nFeatures: ${this.deck.shape}, Railings: ${this.deck.railings}`;
     }
 
